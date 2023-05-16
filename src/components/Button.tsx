@@ -1,5 +1,5 @@
 import { FC } from "react";
-import styles from "../styles/components/button.module.scss";
+import buttonStyles from "../styles/components/button.module.scss";
 
 interface ButtonProps {
     text: string;
@@ -8,7 +8,7 @@ interface ButtonProps {
 
 const Button: FC<ButtonProps> = ({ text, onClick }) => {
     return (
-        <div className={styles.button} onClick={onClick}>
+        <div className={buttonStyles.button} onClick={onClick}>
             {text}
         </div>
     );

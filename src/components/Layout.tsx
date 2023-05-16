@@ -4,8 +4,12 @@ import appStyles from "../styles/app.module.scss";
 
 const Layout: FC = () => {
     return (
-        <div className={appStyles.canvasWrapper}>
-            <Outlet />
+        <div className={appStyles.layout}>
+            Info and credits
+            <div className={appStyles.canvasWrapper}>
+                <Outlet />
+            </div>
+            Settings
         </div>
     );
 };

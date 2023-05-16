@@ -1,0 +1,64 @@
+.gameArea {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+}
+
+.paused {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 100px;
+    font-weight: 700;
+}
+
+.blocksWrapper {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.row {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.block {
+    width: 8%;
+    height: 25px;
+    margin: 10px;
+}
+
+.empty {
+    @extend .block;
+}
+
+.sliderWrapper {
+    position: relative;
+    width: 100%;
+    height: 15px;
+    margin-bottom: 20px;
+}
+
+.slider {
+    position: absolute;
+    background-color: black;
+    height: 100%;
+}
+
+.ball {
+    position: absolute;
+    aspect-ratio: 1/1;
+    width: 10px;
+    background-color: white;
+    border-radius: 50%;
+}

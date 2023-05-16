@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import buttonStyles from "../styles/button.module.scss";
 import { FC } from "react";
 
-const IndexRout: FC = () => {
+const IndexRoute: FC = () => {
     return (
         <>
             <h1>Breakout</h1>
@@ -14,6 +14,6 @@ const IndexRout: FC = () => {
     );
 };
 
-IndexRout.displayName = "IndexRoute";
+IndexRoute.displayName = "IndexRoute";
 
-export default IndexRout;
+export default IndexRoute;

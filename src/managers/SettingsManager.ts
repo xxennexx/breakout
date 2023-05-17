@@ -22,6 +22,10 @@ export default class SettingsManager {
             name: "ballSpeed",
             value: 2,
         },
+        {
+            name: "hitThreshold",
+            value: 0.5,
+        },
     ];
 
     static get<T>(name: string): T {

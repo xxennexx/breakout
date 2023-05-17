@@ -2,6 +2,7 @@ import { Component, createRef } from "react";
 import gameStyles from "../styles/Game.module.scss";
 import Level from "../types/Level";
 import SettingsManager from "../managers/SettingsManager";
+import { HitDirection } from "../types/HitDirection";
 
 interface GameProps {
     level: Level;
@@ -49,7 +50,7 @@ export default class Game extends Component<GameProps, GameState> {
             y: 0,
         },
         ballVelocity: {
-            x: 0,
+            x: 1,
             y: 1, // TODO: remove/randomize
         },
 
@@ -162,33 +163,63 @@ export default class Game extends Component<GameProps, GameState> {
                 if (!block) return;
 
                 const blockRect = block.getBoundingClientRect();
-
                 const ballSize = SettingsManager.get<number>("ballSize");
-
                 const ballRect = this.ballRef.current?.getBoundingClientRect();
+                const threshold = SettingsManager.get<number>("ballThreshold");
 
                 if (!ballRect) return;
 
-                if (blockRect.x + blockRect.width < ballRect.x) return;
-                if (blockRect.x > ballRect.x + ballSize / 2) return;
-                if (blockRect.y + blockRect.height < ballRect.y) return;
-                if (blockRect.y > ballRect.y + ballSize / 2) return;
+                const conditions = [
+                    ballRect.x === blockRect.x + blockRect.width,
+                    ballRect.x + ballSize === blockRect.x,
+                    ballRect.y === blockRect.y,
+                    ballRect.y + ballSize === blockRect.y + blockRect.height,
+                ];
 
-                this.setState((oldState) => {
-                    const newBlockMap = oldState.blockMap;
+                if (i * rows.length + j === 240) console.log(conditions);
 
-                    newBlockMap[i][j] = null;
+                if (!conditions.every(Boolean)) return;
+
+                console.log("hit");
+
+                let hitDirection: HitDirection;
+
+                if (ballRect.x + ballSize / 2 === blockRect.x)
+                    hitDirection = HitDirection.Left;
+                else if (ballRect.x === blockRect.x + blockRect.width)
+                    hitDirection = HitDirection.Right;
+                else if (ballRect.y - ballSize / 2 === blockRect.y)
+                    hitDirection = HitDirection.Top;
+                else if (ballRect.y === blockRect.y + blockRect.height)
+                    hitDirection = HitDirection.Bottom;
+                else return;
+
+                console.log(HitDirection[hitDirection]);
+
+                this.setState((state) => {
+                    const blockMap = state.blockMap;
+                    blockMap[i][j] = null;
 
                     return {
-                        blockMap: newBlockMap,
-                        ballVelocity: {
-                            x: oldState.ballVelocity.x,
-                            y: -oldState.ballVelocity.y,
-                        },
+                        blockMap,
+                        ballVelocity: this.getNewVelocity(hitDirection),
                     };
                 });
             });
         });
+    }
+
+    getNewVelocity(hitDirection: HitDirection): { x: number; y: number } {
+        const ballVelocity = this.state.ballVelocity;
+
+        switch (hitDirection) {
+            case HitDirection.Left:
+            case HitDirection.Right:
+                return { x: -ballVelocity.x, y: ballVelocity.y };
+            case HitDirection.Top:
+            case HitDirection.Bottom:
+                return { x: ballVelocity.x, y: -ballVelocity.y };
+        }
     }
 
     animateBall() {
@@ -205,34 +236,23 @@ export default class Game extends Component<GameProps, GameState> {
                 },
             });
 
-        const { x, y } = this.state.ballPosition;
-
-        const ballSpeed = SettingsManager.get<number>("ballSpeed");
-
-        const ballVelocity = this.state.ballVelocity;
         const ballPosition = this.state.ballPosition;
+        const ballSpeed = SettingsManager.get<number>("ballSpeed");
+        const ballVelocity = this.state.ballVelocity;
 
         const gameArea = this.gameAreaRef.current;
         if (gameArea) {
             const gameAreaRect = gameArea.getBoundingClientRect();
 
-            if (x + ballSize > gameAreaRect.width)
-                ballVelocity.x = -Math.abs(
-                    ballVelocity.x + (Math.random() * 2 - 1),
-                );
-            else if (x < 0)
-                ballVelocity.x = Math.abs(
-                    ballVelocity.x + (Math.random() * 2 - 1),
-                );
+            if (ballPosition.x + ballSize > gameAreaRect.width)
+                ballVelocity.x = -Math.abs(ballVelocity.x);
+            else if (ballPosition.x < 0)
+                ballVelocity.x = Math.abs(ballVelocity.x);
 
-            if (y + ballSize > gameAreaRect.height)
-                ballVelocity.y = -Math.abs(
-                    ballVelocity.y + (Math.random() * 2 - 1),
-                );
-            else if (y < 0)
-                ballVelocity.y = Math.abs(
-                    ballVelocity.y + (Math.random() * 2 - 1),
-                );
+            if (ballPosition.y + ballSize > gameAreaRect.height)
+                ballVelocity.y = -Math.abs(ballVelocity.y);
+            else if (ballPosition.y < 0)
+                ballVelocity.y = Math.abs(ballVelocity.y);
         }
 
         const sliderWrapper = this.sliderWrapperRef.current;
@@ -240,13 +260,11 @@ export default class Game extends Component<GameProps, GameState> {
             const sliderWidth = SettingsManager.get<number>("sliderWidth");
 
             if (
-                this.state.sliderPosition < x + ballSize &&
-                this.state.sliderPosition + sliderWidth > x &&
-                y <= 30 + ballSize / 2
+                this.state.sliderPosition < ballPosition.x + ballSize &&
+                this.state.sliderPosition + sliderWidth > ballPosition.x &&
+                ballPosition.y <= 30 + ballSize / 2
             )
-                ballVelocity.y = Math.abs(
-                    ballVelocity.y + (Math.random() * 2 - 1),
-                );
+                ballVelocity.y = Math.abs(ballVelocity.y);
         }
 
         ballPosition.x += ballVelocity.x * ballSpeed;
@@ -310,16 +328,6 @@ export default class Game extends Component<GameProps, GameState> {
                     },
                 }));
                 break;
-            case " ":
-                if (!this.state.gameStarted)
-                    this.setState({
-                        gameStarted: true,
-                    });
-                else
-                    this.setState((oldState) => ({
-                        gamePaused: !oldState.gamePaused,
-                    }));
-                break;
         }
     };
 
@@ -333,7 +341,7 @@ export default class Game extends Component<GameProps, GameState> {
                     },
                 }));
                 break;
-            case "ArrowRight": {
+            case "ArrowRight":
                 this.setState((oldstate) => ({
                     sliderMoving: {
                         left: oldstate.sliderMoving.left,
@@ -341,7 +349,16 @@ export default class Game extends Component<GameProps, GameState> {
                     },
                 }));
                 break;
-            }
+            case " ":
+                if (!this.state.gameStarted)
+                    this.setState({
+                        gameStarted: true,
+                    });
+                else
+                    this.setState((oldState) => ({
+                        gamePaused: !oldState.gamePaused,
+                    }));
+                break;
         }
     };
 }

@@ -23,9 +23,11 @@ i18n.use(initReactI18next).init({
     },
 });
 
+const isGithubPages = window.location.hostname === "xxennexx.github.io";
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>
-        <BrowserRouter>
+        <BrowserRouter basename={isGithubPages ? "/breakout" : undefined}>
             <App />
         </BrowserRouter>
     </React.StrictMode>,

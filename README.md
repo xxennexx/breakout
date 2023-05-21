@@ -1,10 +1,15 @@
 # Breakout
-The breakout browser game. For a school project.
 
-# Todo
-- Navbar
-- Colors
-- Routing for levels
-- Merge Index.tsx and Play.tsx (see 1 above)
-- Better velocity (random offsets, more precision, account for slider velocity)
-- Better level format
+A simple Breakout game in React. It includes a couple basic levels and functionality to add your own (using code).
+
+There were plans to add more features (such as power-ups) but there wasn't enough time as it was a timed school assignment.
+
+## Features:
+- Routing
+- Localization
+- Settings (persistent)
+- Multiple levels with ability to add more
+- Keyboard and mouse control
+
+# Downsides
+- Doesn't work on mobile (at all)

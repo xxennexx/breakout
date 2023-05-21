@@ -2,15 +2,16 @@ import { Component, createRef } from "react";
 import gameStyles from "../styles/Game.module.scss";
 import Level from "../types/Level";
 import SettingsManager from "../managers/SettingsManager";
-import { HitDirection } from "../types/HitDirection";
+import Paused from "./overlay/Paused";
+import GameOver from "./overlay/GameOver";
+import GameWon from "./overlay/GameWon";
 
 interface GameProps {
     level: Level;
 }
 
 interface GameState {
-    gameStarted: boolean;
-    gamePaused: boolean;
+    gameState: "playing" | "paused" | "gameover" | "starting" | "gamewon";
 
     sliderPosition: number;
     sliderMoving: {
@@ -35,8 +36,7 @@ export default class Game extends Component<GameProps, GameState> {
     static displayName = "Game";
 
     state: GameState = {
-        gamePaused: false,
-        gameStarted: false,
+        gameState: "starting",
 
         sliderPosition: 0,
         sliderMoving: {
@@ -50,8 +50,8 @@ export default class Game extends Component<GameProps, GameState> {
             y: 0,
         },
         ballVelocity: {
-            x: 1,
-            y: 1, // TODO: remove/randomize
+            x: Math.random() * 2 - 1,
+            y: Math.random() * 2 - 1,
         },
 
         blockMap: this.props.level.blockMap,
@@ -64,11 +64,22 @@ export default class Game extends Component<GameProps, GameState> {
         this.tick();
         window.addEventListener("keydown", this.onKeyDown);
         window.addEventListener("keyup", this.onKeyUp);
+        window.addEventListener("mousemove", this.onMouseMove);
+        setTimeout(
+            () =>
+                this.gameAreaRef.current?.addEventListener(
+                    "click",
+                    this.onClick,
+                ),
+            10,
+        ); // prevent level select from triggering click
     }
 
     componentWillUnmount() {
         window.removeEventListener("keydown", this.onKeyDown);
         window.removeEventListener("keyup", this.onKeyUp);
+        window.removeEventListener("mousemove", this.onMouseMove);
+        this.gameAreaRef.current?.removeEventListener("click", this.onClick);
     }
 
     render() {
@@ -118,35 +129,45 @@ export default class Game extends Component<GameProps, GameState> {
                     style={{
                         left: this.state.ballPosition.x,
                         bottom: this.state.ballPosition.y,
+                        width: SettingsManager.get<number>("ballSize"),
+                        height: SettingsManager.get<number>("ballSize"),
                     }}
                     className={gameStyles.ball}
                     ref={this.ballRef}
                 />
-                {this.state.gamePaused && (
-                    <div className={gameStyles.paused}>Paused</div>
-                )}
+                {this.getOverlay()}
             </div>
         );
+    }
+
+    getOverlay() {
+        switch (this.state.gameState) {
+            case "paused":
+                return <Paused />;
+            case "gameover":
+                return <GameOver />;
+            case "gamewon":
+                return <GameWon />;
+            default:
+                return null;
+        }
     }
 
     tick() {
         requestAnimationFrame(this.tick.bind(this));
 
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        //@ts-ignore
-        window.debug = {
-            SettingsManager,
-            moveBall: (x: number, y: number) =>
-                this.setState({ ballPosition: { x, y } }),
-            setVelocity: (x: number, y: number) =>
-                this.setState({ ballVelocity: { x, y } }),
-            moveSlider: (x: number) => this.setState({ sliderPosition: x }),
-            state: this.state,
-        };
+        if (["paused", "gameover", "gamewon"].includes(this.state.gameState))
+            return;
 
-        if (this.state.gamePaused) return;
+        if (this.state.blockMap.flat().filter(Boolean).length === 0)
+            return this.setState({ gameState: "gamewon" });
 
-        this.moveSlider();
+        if (
+            SettingsManager.get<"mouse" | "keyboard">("controlType") ===
+            "keyboard"
+        )
+            this.moveSlider();
+
         this.animateBall();
         this.checkBlockCollision();
     }
@@ -163,76 +184,78 @@ export default class Game extends Component<GameProps, GameState> {
                 if (!block) return;
 
                 const blockRect = block.getBoundingClientRect();
-                const ballSize = SettingsManager.get<number>("ballSize");
                 const ballRect = this.ballRef.current?.getBoundingClientRect();
-                const threshold = SettingsManager.get<number>("ballThreshold");
-
                 if (!ballRect) return;
 
                 const conditions = [
-                    ballRect.x === blockRect.x + blockRect.width,
-                    ballRect.x + ballSize === blockRect.x,
-                    ballRect.y === blockRect.y,
-                    ballRect.y + ballSize === blockRect.y + blockRect.height,
+                    ballRect.x <= blockRect.x + blockRect.width, // right
+                    ballRect.x + ballRect.width >= blockRect.x, // left
+                    ballRect.y <= blockRect.y + blockRect.height, // bottom
+                    ballRect.y + ballRect.height >= blockRect.y, // top
                 ];
 
-                if (i * rows.length + j === 240) console.log(conditions);
+                if (!conditions.every((v) => v)) return;
 
-                if (!conditions.every(Boolean)) return;
+                const ballCenterX = ballRect.x + ballRect.width / 2;
+                const ballCenterY = ballRect.y + ballRect.height / 2;
 
-                console.log("hit");
+                const deltaX =
+                    ballCenterX - (blockRect.x + blockRect.width / 2);
+                const deltaY =
+                    ballCenterY - (blockRect.y + blockRect.height / 2);
 
-                let hitDirection: HitDirection;
+                const intersectX =
+                    Math.abs(deltaX) - ballRect.width / 2 - blockRect.width / 2;
+                const intersectY =
+                    Math.abs(deltaY) -
+                    ballRect.height / 2 -
+                    blockRect.height / 2;
 
-                if (ballRect.x + ballSize / 2 === blockRect.x)
-                    hitDirection = HitDirection.Left;
-                else if (ballRect.x === blockRect.x + blockRect.width)
-                    hitDirection = HitDirection.Right;
-                else if (ballRect.y - ballSize / 2 === blockRect.y)
-                    hitDirection = HitDirection.Top;
-                else if (ballRect.y === blockRect.y + blockRect.height)
-                    hitDirection = HitDirection.Bottom;
-                else return;
-
-                console.log(HitDirection[hitDirection]);
-
-                this.setState((state) => {
-                    const blockMap = state.blockMap;
-                    blockMap[i][j] = null;
-
-                    return {
-                        blockMap,
-                        ballVelocity: this.getNewVelocity(hitDirection),
-                    };
-                });
+                if (intersectX <= 0 && intersectY <= 0) {
+                    if (Math.abs(intersectX) < Math.abs(intersectY))
+                        this.setState((prevState) => ({
+                            blockMap: prevState.blockMap.map((row, y) =>
+                                y === i
+                                    ? row.map((val, x) =>
+                                          j === x ? null : val,
+                                      )
+                                    : row,
+                            ),
+                            ballVelocity: {
+                                x: -prevState.ballVelocity.x,
+                                y: prevState.ballVelocity.y,
+                            },
+                        }));
+                    else
+                        this.setState((prevState) => ({
+                            blockMap: prevState.blockMap.map((row, y) =>
+                                y === i
+                                    ? row.map((val, x) =>
+                                          j === x ? null : val,
+                                      )
+                                    : row,
+                            ),
+                            ballVelocity: {
+                                x: prevState.ballVelocity.x,
+                                y: -prevState.ballVelocity.y,
+                            },
+                        }));
+                }
             });
         });
-    }
-
-    getNewVelocity(hitDirection: HitDirection): { x: number; y: number } {
-        const ballVelocity = this.state.ballVelocity;
-
-        switch (hitDirection) {
-            case HitDirection.Left:
-            case HitDirection.Right:
-                return { x: -ballVelocity.x, y: ballVelocity.y };
-            case HitDirection.Top:
-            case HitDirection.Bottom:
-                return { x: ballVelocity.x, y: -ballVelocity.y };
-        }
     }
 
     animateBall() {
         const ballSize = SettingsManager.get<number>("ballSize");
 
-        if (!this.state.gameStarted)
+        if (this.state.gameState === "starting")
             return this.setState({
                 ballPosition: {
                     x:
                         this.state.sliderPosition +
                         SettingsManager.get<number>("sliderWidth") / 2 -
                         ballSize / 2,
-                    y: 30 + ballSize / 2,
+                    y: 35,
                 },
             });
 
@@ -244,14 +267,14 @@ export default class Game extends Component<GameProps, GameState> {
         if (gameArea) {
             const gameAreaRect = gameArea.getBoundingClientRect();
 
-            if (ballPosition.x + ballSize > gameAreaRect.width)
+            if (ballPosition.x + ballSize >= gameAreaRect.width)
                 ballVelocity.x = -Math.abs(ballVelocity.x);
-            else if (ballPosition.x < 0)
+            else if (ballPosition.x <= 0)
                 ballVelocity.x = Math.abs(ballVelocity.x);
 
-            if (ballPosition.y + ballSize > gameAreaRect.height)
+            if (ballPosition.y + ballSize >= gameAreaRect.height)
                 ballVelocity.y = -Math.abs(ballVelocity.y);
-            else if (ballPosition.y < 0)
+            else if (ballPosition.y <= 0)
                 ballVelocity.y = Math.abs(ballVelocity.y);
         }
 
@@ -262,13 +285,18 @@ export default class Game extends Component<GameProps, GameState> {
             if (
                 this.state.sliderPosition < ballPosition.x + ballSize &&
                 this.state.sliderPosition + sliderWidth > ballPosition.x &&
-                ballPosition.y <= 30 + ballSize / 2
-            )
+                ballPosition.y <= 35
+            ) {
                 ballVelocity.y = Math.abs(ballVelocity.y);
+                ballVelocity.x = Math.random() * 2 - 1 + ballVelocity.x * 0.5;
+            }
         }
 
         ballPosition.x += ballVelocity.x * ballSpeed;
         ballPosition.y += ballVelocity.y * ballSpeed;
+
+        if (ballPosition.y < 30)
+            return this.setState({ gameState: "gameover" });
 
         this.setState({
             ballPosition,
@@ -332,6 +360,11 @@ export default class Game extends Component<GameProps, GameState> {
     };
 
     onKeyUp = (e: KeyboardEvent) => {
+        if (
+            SettingsManager.get<"mouse" | "keyboard">("controlType") === "mouse"
+        )
+            return;
+
         switch (e.key) {
             case "ArrowLeft":
                 this.setState((oldstate) => ({
@@ -350,14 +383,94 @@ export default class Game extends Component<GameProps, GameState> {
                 }));
                 break;
             case " ":
-                if (!this.state.gameStarted)
-                    this.setState({
-                        gameStarted: true,
-                    });
-                else
-                    this.setState((oldState) => ({
-                        gamePaused: !oldState.gamePaused,
-                    }));
+                switch (this.state.gameState) {
+                    case "starting":
+                        this.setState({
+                            gameState: "playing",
+                        });
+                        break;
+                    case "gamewon":
+                    case "gameover":
+                        this.setState({
+                            gameState: "starting",
+                            blockMap: this.props.level.blockMap,
+                        });
+                        break;
+                    case "playing":
+                        this.setState({
+                            gameState: "paused",
+                        });
+                        break;
+                    case "paused":
+                        this.setState({
+                            gameState: "playing",
+                        });
+                        break;
+                }
+                break;
+        }
+    };
+
+    onMouseMove = (e: MouseEvent) => {
+        if (
+            SettingsManager.get<"mouse" | "keyboard">("controlType") !== "mouse"
+        )
+            return;
+        if (!["playing", "starting"].includes(this.state.gameState)) return;
+
+        const sliderWrapper = this.sliderWrapperRef.current;
+        if (!sliderWrapper) return;
+
+        const wrapperRect = sliderWrapper.getBoundingClientRect();
+
+        const sliderWidth = SettingsManager.get<number>("sliderWidth");
+
+        const newSliderPosition = e.clientX - wrapperRect.x - sliderWidth / 2;
+
+        if (newSliderPosition < 0)
+            this.setState({
+                sliderPosition: 0,
+                sliderVelocity: 0,
+            });
+        else if (newSliderPosition > wrapperRect.width - sliderWidth)
+            this.setState({
+                sliderPosition: wrapperRect.width - sliderWidth,
+                sliderVelocity: 0,
+            });
+        else
+            this.setState({
+                sliderPosition: newSliderPosition,
+            });
+    };
+
+    onClick = () => {
+        if (
+            SettingsManager.get<"mouse" | "keyboard">("controlType") !== "mouse"
+        )
+            return;
+
+        switch (this.state.gameState) {
+            case "starting":
+                this.setState({
+                    gameState: "playing",
+                });
+                break;
+            case "gamewon":
+            case "gameover":
+                this.setState({
+                    gameState: "starting",
+                    blockMap: this.props.level.blockMap,
+                });
+                break;
+            case "playing":
+                this.setState({
+                    gameState: "paused",
+                });
+                break;
+            case "paused":
+                this.setState({
+                    gameState: "playing",
+                });
                 break;
         }
     };

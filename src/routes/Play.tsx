@@ -1,29 +1,18 @@
-import { FC, useState } from "react";
-import Level from "../types/Level";
-import Simple from "../levels/Simple";
+import { FC } from "react";
+import { Navigate, useLocation } from "react-router-dom";
 import Game from "../components/Game";
-
-const levels = [Simple];
+import Levels from "../managers/LevelsManager";
 
 const PlayRoute: FC = () => {
-    const [currentLevel, setCurrentLevel] = useState<Level | null>(null);
+    const location = useLocation();
 
-    if (currentLevel === null)
-        return (
-            <>
-                <div>Select a level to play: </div>
-                {levels.map((level) => (
-                    <button
-                        key={level.name}
-                        onClick={() => setCurrentLevel(level)}
-                    >
-                        {level.name}
-                    </button>
-                ))}
-            </>
-        );
+    const levelName = location.pathname.split("/")[2];
 
-    return <Game level={currentLevel} />;
+    const level = Levels.find((level) => level.name === levelName);
+
+    if (!level) return <Navigate to="/" replace={true} />;
+
+    return <Game level={level} />;
 };
 
 PlayRoute.displayName = "PlayRoute";

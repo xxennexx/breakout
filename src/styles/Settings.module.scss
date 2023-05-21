@@ -1,0 +1,12 @@
+.controlWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.controlLabel {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    justify-content: space-between;
+}

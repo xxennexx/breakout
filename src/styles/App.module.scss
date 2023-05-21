@@ -14,3 +14,13 @@
     height: 100vh;
     justify-content: space-evenly;
 }
+
+.levelSelect {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.levelList {
+    display: flex;
+    flex-wrap: wrap;
+}

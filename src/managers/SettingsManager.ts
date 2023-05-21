@@ -1,6 +1,7 @@
 export interface Setting<T> {
     name: string;
     value: T;
+    default: T;
 }
 
 export default class SettingsManager {
@@ -9,22 +10,32 @@ export default class SettingsManager {
         {
             name: "sliderSpeed",
             value: 20,
+            default: 20,
         },
         {
             name: "sliderWidth",
             value: 100,
+            default: 100,
         },
         {
             name: "ballSize",
             value: 10,
+            default: 10,
         },
         {
             name: "ballSpeed",
-            value: 2,
+            value: 4,
+            default: 4,
         },
         {
-            name: "hitThreshold",
-            value: 0.5,
+            name: "language",
+            value: "en",
+            default: "en",
+        },
+        {
+            name: "controlType",
+            value: "keyboard",
+            default: "keyboard",
         },
     ];
 
@@ -39,6 +50,15 @@ export default class SettingsManager {
         ) as Setting<T>;
 
         setting.value = value;
+
+        this.save();
+    }
+
+    static reset() {
+        this.Settings.forEach((setting) => {
+            if (setting.name === "language") return;
+            setting.value = setting.default;
+        });
 
         this.save();
     }
@@ -63,7 +83,3 @@ export default class SettingsManager {
         });
     }
 }
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-window.amogus = SettingsManager;

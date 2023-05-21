@@ -8,7 +8,7 @@ function App() {
         <Routes>
             <Route path="/" element={<Layout />}>
                 <Route index element={<IndexRoute />} />
-                <Route path="play" element={<PlayRoute />} />
+                <Route path="play/:level" element={<PlayRoute />} />
             </Route>
         </Routes>
     );

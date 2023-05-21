@@ -1,14 +1,19 @@
 import { FC } from "react";
-import buttonStyles from "../styles/components/button.module.scss";
+import buttonStyles from "../styles/Button.module.scss";
 
 interface ButtonProps {
     text: string;
+    color?: string;
     onClick: () => void;
 }
 
-const Button: FC<ButtonProps> = ({ text, onClick }) => {
+const Button: FC<ButtonProps> = ({ text, color, onClick }) => {
     return (
-        <div className={buttonStyles.button} onClick={onClick}>
+        <div
+            className={buttonStyles.button}
+            onClick={onClick}
+            style={{ backgroundColor: color }}
+        >
             {text}
         </div>
     );
